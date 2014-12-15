@@ -1,0 +1,24 @@
+{
+  "name": "Rosskick",
+  "version": "0.0.0",
+  "description": "An updater for nodewebkit apps",
+  "main": "update.coffee",
+  "scripts": {
+    "test": "mocha"
+  },
+  "keywords": [
+    "sparkle",
+    "update",
+    "node-webkit",
+    "nw"
+  ],
+  "author": "mrkev",
+  "license": "ISC",
+  "dependencies": {
+    "adm-zip": "^0.4.4",
+    "es6-promise": "^2.0.1",
+    "request": "^2.51.0",
+    "request-promise": "^0.3.2",
+    "rimraf": "^2.2.8"
+  }
+}
