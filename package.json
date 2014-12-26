@@ -1,5 +1,5 @@
 {
-  "name": "Rosskick",
+  "name": "nodewebkit-app-update",
   "version": "0.0.0",
   "description": "An updater for nodewebkit apps",
   "main": "update.coffee",
@@ -10,7 +10,8 @@
     "sparkle",
     "update",
     "node-webkit",
-    "nw"
+    "nw",
+    "updater"
   ],
   "author": "mrkev",
   "license": "ISC",

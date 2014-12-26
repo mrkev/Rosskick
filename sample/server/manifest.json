@@ -1,21 +1,31 @@
 {
-  "0.0.1": {
+  "9.9.9": {
     "description": "Incremental update.",
     "changeLog": [
       "Bugfixes and performace improvements"
     ],
     "gitTag": "v0.0.1",
     "gitCommit": "56f1b572",
-    "package" : {
-      "windows": {
+    "release" : {
+      "win32": {
         "url": "https://get.popcorntime.io/_updates/0_3_5_3.win.nw",
         "checksum": "6dc286f572627c9d5a7ff00ac7a9383047c0c097",
         "signature": "MCwCFAU0VqBoJ1OGDif81TmRKP6SFz2OAhRGCHs70RrUd5vj5ymOaZisKdsDYA=="
       },
-      "osx" : {
+      "win64": {
+        "url": "https://get.popcorntime.io/_updates/0_3_5_3.win.nw",
+        "checksum": "6dc286f572627c9d5a7ff00ac7a9383047c0c097",
+        "signature": "MCwCFAU0VqBoJ1OGDif81TmRKP6SFz2OAhRGCHs70RrUd5vj5ymOaZisKdsDYA=="
+      },
+      "osx32" : {
+        "url": "https://get.popcorntime.io/_updates/0_3_5_4.nw",
+        "checksum": "eab2e5b8494f92b36fed1423ee6d704672c0ba6a",
+        "signature": "MCwCFG2bw8UxxVwZhZBD3seh54l5uXqXAhQd9b7wu7cH7uAeJdrxcmwU9Jv62Q=="
+      },
+      "osx64" : {
         "url": "http://localhost:1800/update.zip",
-        "checksum": "bb6c6aacbf0b0e655bee02d9b27f639cad4ae221",
-        "signature": "9ebdbf3fb71585b32817dc8eee83a1fdd5178d410d1c15549c55c7deef1b19aeafeaf554a8ba7dc091479cd6ddf9da1bf14072dc8d3a5e4751b4cb30dbc31197d1cccb65b5d595c1c3de9532b34cc92d5e2c0b852e717679d21d73823d5b885fb3359f2241156ee89f5d92ddf1a279105865f3a3c8a70bf0bb300ff687cc2197e2b0e101d0c2f53a76291d0cde148df861edc54fa9d167df94188f983094aed6bbf98accc516fdba708df15a1d3f375f285255ab019aae994984fbbbb713766ef1eb8a8c8df177756c3085fd8764829782254d0a794d946a026ebc578a45327a95218c4cec19fb05b5dcc5732886eee0c6ed7864e3f1df4b5f8f7603054a1a2c"
+        "checksum": "eab2e5b8494f92b36fed1423ee6d704672c0ba6a",
+        "signature": "MCwCFG2bw8UxxVwZhZBD3seh54l5uXqXAhQd9b7wu7cH7uAeJdrxcmwU9Jv62Q=="
       },
       "linux32" : {
         "url": "https://get.popcorntime.io/_updates/0_3_5_3.nw",
@@ -39,13 +49,23 @@
     ],
     "gitTag": "v0.0.0",
     "gitCommit": "56f1b572",
-    "package" : {
-      "windows": {
+    "release" : {
+      "win32": {
         "url": "https://get.popcorntime.io/_updates/0_3_5_3.win.nw",
         "checksum": "6dc286f572627c9d5a7ff00ac7a9383047c0c097",
         "signature": "MCwCFAU0VqBoJ1OGDif81TmRKP6SFz2OAhRGCHs70RrUd5vj5ymOaZisKdsDYA=="
       },
-      "osx" : {
+      "win64": {
+        "url": "https://get.popcorntime.io/_updates/0_3_5_3.win.nw",
+        "checksum": "6dc286f572627c9d5a7ff00ac7a9383047c0c097",
+        "signature": "MCwCFAU0VqBoJ1OGDif81TmRKP6SFz2OAhRGCHs70RrUd5vj5ymOaZisKdsDYA=="
+      },
+      "osx32" : {
+        "url": "https://get.popcorntime.io/_updates/0_3_5_4.nw",
+        "checksum": "eab2e5b8494f92b36fed1423ee6d704672c0ba6a",
+        "signature": "MCwCFG2bw8UxxVwZhZBD3seh54l5uXqXAhQd9b7wu7cH7uAeJdrxcmwU9Jv62Q=="
+      },
+      "osx64" : {
         "url": "https://get.popcorntime.io/_updates/0_3_5_4.nw",
         "checksum": "eab2e5b8494f92b36fed1423ee6d704672c0ba6a",
         "signature": "MCwCFG2bw8UxxVwZhZBD3seh54l5uXqXAhQd9b7wu7cH7uAeJdrxcmwU9Jv62Q=="

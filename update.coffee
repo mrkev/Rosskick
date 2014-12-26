@@ -44,7 +44,7 @@ class Ross
     return @check().then (update_info) ->
       return unless update_info 
 
-      package_info = update_info.package[self.settings.current_os]
+      package_info = update_info.release[self.settings.current_os]
 
       return self.present(update_info).then (go) -> 
         if go
@@ -63,7 +63,7 @@ class Ross
       console.log "Not updating. Test development."
       return Promise.resolve null
 
-    return rp(self.settings.UPDATE_ENDPOINT).then (updates) ->
+    return rp(self.settings.update.endpoint).then (updates) ->
       updates  = JSON.parse(updates)
       versions = Object.keys(updates).sort()
       
@@ -109,7 +109,7 @@ class Ross
       read_stream.on "end", ->
         hash.end()
         if (package_info.checksum is hash.read().toString("hex") and
-            verify.verify(self.settings.UPDATE_VERIFY_PUBKEY, package_info.signature, "base64"))
+            verify.verify(self.settings.update.pubkey, package_info.signature, "base64"))
           resolve true
         else
           resolve true
@@ -155,7 +155,7 @@ class Ross
         
         pack.extractAllTo installDir, true
           
-          # Cleanup download
+        # Cleanup download
         fs.unlink self.outputFile, (err) ->
           if err
             reject err
