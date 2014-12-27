@@ -82,7 +82,7 @@ class Ross
   download : (package_info) ->
     self = this
     return new Promise (resolve, reject) ->
-      download_stream = request(package_info.url)
+      download_stream = request(package_info.url) # ## Handle server response errors
       download_stream.pipe fs.createWriteStream(self.outputFile)
 
       download_stream.on "complete", ->

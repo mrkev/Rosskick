@@ -17,6 +17,7 @@
   "license": "ISC",
   "dependencies": {
     "adm-zip": "^0.4.4",
+    "coffee-script": "^1.8.0",
     "es6-promise": "^2.0.1",
     "node-rsa": "^0.2.13",
     "request": "^2.51.0",
