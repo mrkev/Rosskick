@@ -7,35 +7,10 @@
     "gitTag": "v0.0.1",
     "gitCommit": "56f1b572",
     "release" : {
-      "win32": {
-        "url": "https://get.popcorntime.io/_updates/0_3_5_3.win.nw",
-        "checksum": "6dc286f572627c9d5a7ff00ac7a9383047c0c097",
-        "signature": "MCwCFAU0VqBoJ1OGDif81TmRKP6SFz2OAhRGCHs70RrUd5vj5ymOaZisKdsDYA=="
-      },
-      "win64": {
-        "url": "https://get.popcorntime.io/_updates/0_3_5_3.win.nw",
-        "checksum": "6dc286f572627c9d5a7ff00ac7a9383047c0c097",
-        "signature": "MCwCFAU0VqBoJ1OGDif81TmRKP6SFz2OAhRGCHs70RrUd5vj5ymOaZisKdsDYA=="
-      },
-      "osx32" : {
-        "url": "https://get.popcorntime.io/_updates/0_3_5_4.nw",
-        "checksum": "eab2e5b8494f92b36fed1423ee6d704672c0ba6a",
-        "signature": "MCwCFG2bw8UxxVwZhZBD3seh54l5uXqXAhQd9b7wu7cH7uAeJdrxcmwU9Jv62Q=="
-      },
       "osx64" : {
         "url": "http://localhost:1800/update.zip",
-        "checksum": "eab2e5b8494f92b36fed1423ee6d704672c0ba6a",
-        "signature": "MCwCFG2bw8UxxVwZhZBD3seh54l5uXqXAhQd9b7wu7cH7uAeJdrxcmwU9Jv62Q=="
-      },
-      "linux32" : {
-        "url": "https://get.popcorntime.io/_updates/0_3_5_3.nw",
-        "checksum": "a8425c55476b4748ccd369ecd0fa7c9747bceabf",
-        "signature": "MCwCFBMsMeyGwsvvSBqIL0exmt/TacjYAhRiDBxN7cPs+whl5qinwrJu8mAhUA=="
-      },
-      "linux64" : {
-        "url": "https://get.popcorntime.io/_updates/0_3_5_3.nw",
-        "checksum": "a8425c55476b4748ccd369ecd0fa7c9747bceabf",
-        "signature": "MCwCFBMsMeyGwsvvSBqIL0exmt/TacjYAhRiDBxN7cPs+whl5qinwrJu8mAhUA=="
+        "checksum": "bb6c6aacbf0b0e655bee02d9b27f639cad4ae221",
+        "signature": "IKy/4W6l9Aizyea8e5pJ7hsudARKjrPtVxEzt8oeELb8lJl0dROPH4fny2OyWpW4KRW/aoknI5IXzdd91VZmxAaxxrxMG2kJItJDv9hMC8/drHbRgkxm1eKoqJLx8BG9OQCy2qyORfm3iDbDt7GsKJRKczmlS/I/hVxZ6ckCeks="
       }
     }
   },

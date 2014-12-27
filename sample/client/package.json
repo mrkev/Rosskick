@@ -1,0 +1,25 @@
+{
+  "name": "Rosskick",
+  "version": "0.0.0",
+  "description": "An updater for nodewebkit apps",
+  "main": "update.coffee",
+  "scripts": {
+    "test": "mocha"
+  },
+  "keywords": [
+    "sparkle",
+    "update",
+    "node-webkit",
+    "nw"
+  ],
+  "author": "mrkev",
+  "license": "ISC",
+  "dependencies": {
+    "es6-promise": "^2.0.1",
+    "request-promise": "^0.3.2"
+  },
+  "update" : {
+    "endpoint" : "http://localhost:1800/",
+    "pubkey": "-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDBDc8enZXlWB8IsACdoneymJQv\ncrHfhu+LqGIFHHzW8KFtuZNmkggyFfMyY5qNWJq28pHgJr87f1p5KKhmsRsQsgn0\nVZuWrHPQKwh6uwO0LeF0wmIISAYx9c8T/G0A1E0rDCcbU6qmh+BFka+wNZ7+mDkt\nmNnv44g7lEiDravHWQIDAQAB\n-----END PUBLIC KEY-----\n"
+  }
+}

@@ -2,7 +2,7 @@
   "name": "nodewebkit-app-update",
   "version": "0.0.0",
   "description": "An updater for nodewebkit apps",
-  "main": "update.coffee",
+  "main": "index.js",
   "scripts": {
     "test": "mocha"
   },
@@ -18,8 +18,10 @@
   "dependencies": {
     "adm-zip": "^0.4.4",
     "es6-promise": "^2.0.1",
+    "node-rsa": "^0.2.13",
     "request": "^2.51.0",
     "request-promise": "^0.3.2",
-    "rimraf": "^2.2.8"
+    "rimraf": "^2.2.8",
+    "rsa-json": "^0.2.0"
   }
 }

@@ -18,7 +18,6 @@ class Ross
       'linux' then process.execPath else process.cwd();
     @TEMP_FILENAME = "package.nw.new"
     @outputFile = path.join(path.dirname(@TEMP_FOLDER), @TEMP_FILENAME)
-
     
     ##
     # Function returning true if currently in test development (aka. shouldn't
@@ -94,26 +93,30 @@ class Ross
         reject e
         return
 
+
   ##
   # Returns: Empty promise if verification was successful. 
   # Rejects: VerificationError if verification fails.
   verify : (package_info) ->
     self = this
-    console.dir self.outputFile
     return new Promise (resolve, reject) ->
-      hash = crypto.createHash("SHA1")
+
+      hash   = crypto.createHash("SHA1")
       verify = crypto.createVerify("RSA-SHA256")
+
       read_stream = fs.createReadStream(self.outputFile)
       read_stream.pipe hash
       read_stream.pipe verify
       read_stream.on "end", ->
         hash.end()
-        if (package_info.checksum is hash.read().toString("hex") and
-            verify.verify(self.settings.update.pubkey, package_info.signature, "base64"))
-          resolve true
-        else
-          resolve true
-          # FOR NOW: reject new VerificationError("Verification Failed.")
+        try          
+          if (package_info.checksum is hash.read().toString("hex") and
+              verify.verify(self.settings.update.pubkey, package_info.signature, "base64"))
+            resolve true
+          else
+            reject new VerificationError("Verification Failed.")
+        catch e
+          console.error e
 
   ##
   # Installs donwloaded update
@@ -121,20 +124,14 @@ class Ross
   install : () ->
     os = @settings.current_os
     # ## Check if path exists.
-    if os is "windows"
+    if os is "win32" or os is "win64"
       return installWindows.apply(this)
     else if os is "linux32" or os is "linux64"
       return installLinux.apply(this)
-    else if os is "osx"
+    else if os is "osx32" or os is "osx64"
       return installOSX.apply(this)
     else
       throw new Error("OS not supported. This should be impossible.")
-
-  ##
-  # Removes temporary download data. 
-  # Returns: Empty promise if cleanup was successful.
-  cleanup = () -> 
-    ## # 
 
   ##
   # Installs downloaded update on OSX
@@ -167,7 +164,13 @@ class Ross
   
         return
 
-
+  ########################### Unsupported/Unfinished ###########################
+  
+  ##
+  # Removes temporary download data. 
+  # Returns: Empty promise if cleanup was successful.
+  cleanup = () -> 
+    ## # 
 
   ##
   # Installs downloaded update on Windows

@@ -25,7 +25,7 @@ class Kick
         
         resolve
           checksum  : hash.read().toString("hex")
-          signature : sign.sign(priv_key, "hex")
+          signature : sign.sign(priv_key, "base64")
 
 module.exports = Kick
 
@@ -35,11 +35,10 @@ if require.main is module
     .version('0.0.1')
     .option('-k, --key <key>', 'PEM-encoded private RSA key to use')
     .option('-f, --file <file>', 'File to sign')
-  
-  program.parse(process.argv)
+    .parse(process.argv)
 
   if not program.file
-    program.file = "./sign.coffee"
+    program.file = "./sample/server/update.zip"
 
   if not program.key
     program.key = './sample/server/key'
