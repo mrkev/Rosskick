@@ -1,6 +1,5 @@
 request = require("request")
-fs      = require("fs")
-rm      = require("rimraf")
+fs      = require("fs-extra")
 path    = require("path")
 crypto  = require("crypto")
 Zip     = require("adm-zip")
@@ -20,47 +19,83 @@ class Ross
     @outputFile = path.join(path.dirname(@TEMP_FOLDER), @TEMP_FILENAME)
     
     ##
-    # Function returning true if currently in test development (aka. shouldn't
-    # update), false if it should update. Called before UPDATE_ENDPOINT is
-    # quieried for manifest.
-    @is_test_development = (() -> false)() 
+    # Functions to be called between each stage of update. They also decide if
+    # update process should continue.
+    # next: (err, next) ->
+    #   [err]  error or null
+    #   [next] function if err is null, undefined otherwise. next(true) will
+    #          continue the update process. next(false) will halt it.
+    @_on = 
+      "check" : (err, next) -> 
+        return console.error(err) if err
+        next(true)
+      "download" : (err, next) ->
+        return console.error(err) if err
+        next(true)
+      "install" : (err) ->
+        return console.error(err) if err
 
-    ##
-    # Function returning promise to true if update process should continue,
-    # false otherwise. Called only when an update for the app in the current
-    # OS is available.
-    @present = ((update_info)-> return new Promise((decide) -> decide true))
+  ##
+  # Sets event functions.
+  on : (evt, fn) ->
+    throw "Expected callback function" unless typeof fn is "function"
+    @_on[evt] = fn
 
-    ##
-    # Function called when udpate process has been completed successfully.
-    @notify_updated = ((update_info)-> return true)
 
+  ############################### Update Process ###############################
 
   ##
   # Updates
   update : ->
     self = this
-    return @check().then (update_info) ->
-      return unless update_info 
+
+    update_info  = null
+    package_info = null
+
+
+    # Check for updates
+    return @check()
+    .then (info) ->
+      update_info = info
+      
+      throw new Error("Empty update manifest file.") unless update_info
+      throw new Error("No 'release' for update") unless update_info.release
 
       package_info = update_info.release[self.settings.current_os]
+      
+      throw new Error('Update not available for current OS') unless package_info
+      return new Promise((resolve) -> self._on["check"](null, resolve))
+     
+    .catch((err) -> self._on["check"](err))
 
-      return self.present(update_info).then (go) -> 
-        if go
-          return self.download(package_info)
-          .then((pkg_inf) -> self.verify pkg_inf)
-          .then(() -> self.install())
-          .then(() -> self.notify_updated update_info)
+
+    # Download updates
+    .then (go) ->
+      return false unless go
+      return self.download(package_info)
+      .then((pkg_inf) -> self.verify pkg_inf)
+
+    .catch((err) -> self._on['download'](err))
+
+
+    # Install the updates
+    .then (go) ->
+      return false unless go
+      return self.install()
+    
+    .catch((err) -> self._on['install'](err))
+
+
+    # Done! 
+    .then (canceled) -> 
+      self._on['install'](null) unless canceled
+    
 
   ##
   # Returns: Promise to null if no update available for current OS, or the 
   #  update object for the latest update.
   check : () ->
     self = this
-    
-    if @is_test_development
-      console.log "Not updating. Test development."
-      return Promise.resolve null
 
     return rp(self.settings.update.endpoint).then (updates) ->
       updates  = JSON.parse(updates)
@@ -93,7 +128,6 @@ class Ross
         reject e
         return
 
-
   ##
   # Returns: Empty promise if verification was successful. 
   # Rejects: VerificationError if verification fails.
@@ -122,55 +156,65 @@ class Ross
   # Installs donwloaded update
   # Returns: Empty promise if instalation was successful.
   install : () ->
+    self = this
     os = @settings.current_os
     # ## Check if path exists.
-    if os is "win32" or os is "win64"
-      return installWindows.apply(this)
-    else if os is "linux32" or os is "linux64"
-      return installLinux.apply(this)
-    else if os is "osx32" or os is "osx64"
-      return installOSX.apply(this)
-    else
-      throw new Error("OS not supported. This should be impossible.")
+    
+    switch os
+      
+      when "win32", "win64"
+        return new Promise((res, rej) -> installWin.call(self, res, rej)) 
+      
+      when "linux32", "linux64"
+        return new Promise((res, rej) -> installLinux.call(self, res, rej))
+      
+      when "osx32", "osx64"
+        return new Promise((res, rej) -> installOSX.call(self, res, rej))
+      
+      else
+        throw new Error("OS not supported. This should be impossible.")
 
   ##
   # Installs downloaded update on OSX
-  installOSX = () ->
+  # 
+  # ## Unpack zip automatically.
+  installOSX = (resolve, reject) ->
     self = this
-    outputDir = path.dirname(self.outputFile)
-    installDir = path.join(outputDir, "app.nw")
-    return new Promise (resolve, reject) ->
-      
+    # process.cwd() -> 
+    installDir = process.cwd() # .app/Contents/Resources/app.nw
+    tempDir = path.join(process.cwd(), "../../Update") # .app/Contents/update
+    
+    zip = self.outputFile 
+    src = path.join(tempDir, self.settings.name + '.app/Contents/Resources')
+    dst = path.join(installDir, '../') #.app/Contents/Resources
+
+    console.log src, '->', dst
+
+    try
+
+      # Extract
+      pack = new Zip(self.outputFile)
+      pack.extractAllTo tempDir, true
+
+      # Cleanup download
+      fs.unlinkSync zip
+
       # Remove current 
-      rm installDir, (err) ->
+      fs.removeSync dst
+
+      # Move 
+      fs.rename(src, dst, (err) ->
         if err
+          console.log "Fatal error: Update didn't finish correctly. Redownload app T.T"
           reject err
-          return 
-        
-        # Extract
-        pack = new Zip(self.outputFile)
-        
-        pack.extractAllTo installDir, true
-          
-        # Cleanup download
-        fs.unlink self.outputFile, (err) ->
-          if err
-            reject err
-          else
-            resolve()
-          return
-  
-        return
-  
-        return
+        else
+          resolve true
+      )
+
+    catch e
+      reject e
 
   ########################### Unsupported/Unfinished ###########################
-  
-  ##
-  # Removes temporary download data. 
-  # Returns: Empty promise if cleanup was successful.
-  cleanup = () -> 
-    ## # 
 
   ##
   # Installs downloaded update on Windows
@@ -179,23 +223,21 @@ class Ross
     outputDir = path.dirname(@outputFile)
     installDir = path.join(outputDir, "app")
     pack = new zip(@outputFile)
+    
     return new Promise (resolve, reject) -> 
       
       # Extract update to install directory
-      pack.extractAllToAsync installDir, true, (err) ->
-        if err
-          reject err
-          return
+      pack.extractAllTo installDir, true
         
-        # Cleanup
-        fs.unlink downloadPath, (err) ->
-          if err
-            defer.reject err
-          else
-            defer.resolve()
-          return
-  
+      # Cleanup
+      fs.unlink downloadPath, (err) ->
+        if err
+          defer.reject err
+        else
+          defer.resolve()
         return
+  
+      return
 
   # WIP
   installLinux = (updateData) ->
@@ -244,18 +286,6 @@ class Ross
       return
 
     defer.promise
-
-  Updater = (options) ->
-    return new Updater(options) unless this instanceof Updater
-    self = this
-    @options = _.defaults(options or {},
-      endpoint: UPDATE_ENDPOINT
-      channel: "beta"
-    )
-    @outputDir = (if App.settings.os is "linux" then process.execPath else process.cwd())
-    @updateData = null
-    return
-
 
 # ## Check if running in correct directory (aka. has app.nw in it)
 

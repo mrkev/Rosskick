@@ -19,10 +19,8 @@
     "adm-zip": "^0.4.4",
     "coffee-script": "^1.8.0",
     "es6-promise": "^2.0.1",
-    "node-rsa": "^0.2.13",
+    "fs-extra": "^0.13.0",
     "request": "^2.51.0",
-    "request-promise": "^0.3.2",
-    "rimraf": "^2.2.8",
-    "rsa-json": "^0.2.0"
+    "request-promise": "^0.3.2"
   }
 }
