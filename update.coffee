@@ -47,7 +47,6 @@ class Ross
         console.log "Update installed"
 
   currentOS : ->
-    return process
     return switch [os.platform(), os.arch()]
       when ['linux',  'x64'] then 'linux64'
       when ['linux',  'x84'] then 'linux32'
