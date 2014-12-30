@@ -1,10 +1,13 @@
-request = require("request")
-fs      = require("fs-extra")
-path    = require("path")
-crypto  = require("crypto")
-Zip     = require("adm-zip")
-Promise = require("es6-promise").Promise
-rp      = require("request-promise")
+request  = require("request")
+fs       = require("fs-extra")
+path     = require("path")
+crypto   = require("crypto")
+Zip      = require("adm-zip")
+Promise  = require("es6-promise").Promise
+rp       = require("request-promise")
+progress = require('progress-stream')
+glob     = require 'glob'
+
 
 class VerificationError extends Error
     constructor: ->
@@ -17,7 +20,10 @@ class Ross
       'linux' then process.execPath else process.cwd();
     @TEMP_FILENAME = "package.nw.new"
     @outputFile = path.join(path.dirname(@TEMP_FOLDER), @TEMP_FILENAME)
+
+    @settings.current_os = currentOS() unless settings.current_os
     
+
     ##
     # Functions to be called between each stage of update. They also decide if
     # update process should continue.
@@ -26,14 +32,29 @@ class Ross
     #   [next] function if err is null, undefined otherwise. next(true) will
     #          continue the update process. next(false) will halt it.
     @_on = 
-      "check" : (err, next) -> 
+      "check" : (err, next, info) -> 
+        console.log "Checked for updates"
         return console.error(err) if err
         next(true)
-      "download" : (err, next) ->
+      "download" : (err, next, info) ->
+        console.log "Update downloaded"
         return console.error(err) if err
         next(true)
-      "install" : (err) ->
+      "download progress" : (progress) ->
+        console.log "#{progress.percentage}% @#{progress.speed}bps (#{progress.remaining} remaining)"
+      "installed" : (err, info) ->
         return console.error(err) if err
+        console.log "Update installed"
+
+  currentOS : ->
+    return process
+    return switch [os.platform(), os.arch()]
+      when ['linux',  'x64'] then 'linux64'
+      when ['linux',  'x84'] then 'linux32'
+      when ['darwin', 'x64'] then 'osx64'
+      when ['darwin', 'x84'] then 'osx32'
+      when ['win64',  'x64'] then 'win64'
+      when ['win32',  'x84'] then 'win32'
 
   ##
   # Sets event functions.
@@ -45,7 +66,7 @@ class Ross
   ############################### Update Process ###############################
 
   ##
-  # Updates
+  # Updates the mcjigg.
   update : ->
     self = this
 
@@ -59,14 +80,14 @@ class Ross
       update_info = info
       
       throw new Error("Empty update manifest file.") unless update_info
-      throw new Error("No 'release' for update") unless update_info.release
+      throw new Error("No 'release' for update")     unless update_info.release
 
       package_info = update_info.release[self.settings.current_os]
       
-      throw new Error('Update not available for current OS') unless package_info
-      return new Promise((resolve) -> self._on["check"](null, resolve))
+      throw  new Error('Update not available for current OS') unless package_info
+      return new Promise((resolve) -> self._on["check"](null, resolve, update_info))
      
-    .catch((err) -> self._on["check"](err))
+    .catch((err) -> self._on["check"](err, null, update_info))
 
 
     # Download updates
@@ -74,8 +95,10 @@ class Ross
       return false unless go
       return self.download(package_info)
       .then((pkg_inf) -> self.verify pkg_inf)
+      .then -> 
+        return new Promise((res) -> self._on['download'](null, res, update_info))
 
-    .catch((err) -> self._on['download'](err))
+    .catch((err) -> self._on['download'](err, null, update_info))
 
 
     # Install the updates
@@ -83,13 +106,12 @@ class Ross
       return false unless go
       return self.install()
     
-    .catch((err) -> self._on['install'](err))
-
+    .catch((err) -> self._on['install'](err, null, update_info))
 
     # Done! 
-    .then (canceled) -> 
-      self._on['install'](null) unless canceled
-    
+    .then (good) -> 
+      self._on['install'](null, update_info) if good
+
 
   ##
   # Returns: Promise to null if no update available for current OS, or the 
@@ -117,16 +139,37 @@ class Ross
   download : (package_info) ->
     self = this
     return new Promise (resolve, reject) ->
-      download_stream = request(package_info.url) # ## Handle server response errors
-      download_stream.pipe fs.createWriteStream(self.outputFile)
+      prog = progress(
+        time: 1000
+      )
 
-      download_stream.on "complete", ->
+      prog.on "progress", (progress) -> 
+        self._on['download progress'](progress)
+        return
+
+      download_stream = request.get(package_info.url)
+      
+      .on('response', (response) ->
+        console.log response.headers['content-type']
+        try
+          prog.setLength parseInt(response.headers['content-length'])
+        catch e
+          throw new Error 'Server returned invalid HTTP content-length header' 
+      )
+      
+      .on("complete", ->
         resolve package_info
         return
-      
-      download_stream.on "error", (e) ->
+      )
+
+      .on("error", (e) ->
         reject e
         return
+      )
+
+      .pipe fs.createWriteStream(self.outputFile)
+
+
 
   ##
   # Returns: Empty promise if verification was successful. 
@@ -183,9 +226,11 @@ class Ross
     # process.cwd() -> 
     installDir = process.cwd() # .app/Contents/Resources/app.nw
     tempDir = path.join(process.cwd(), "../../Update") # .app/Contents/update
+
+    dlapp = glob.sync(tempDir + "/*.app")[0]
     
     zip = self.outputFile 
-    src = path.join(tempDir, self.settings.name + '.app/Contents/Resources')
+    src = path.join(dlapp, 'Contents/Resources')
     dst = path.join(installDir, '../') #.app/Contents/Resources
 
     console.log src, '->', dst
