@@ -21,7 +21,7 @@ class Ross
     @TEMP_FILENAME = "package.nw.new"
     @outputFile = path.join(path.dirname(@TEMP_FOLDER), @TEMP_FILENAME)
 
-    @settings.current_os = currentOS() unless settings.current_os
+    @settings.current_os = @currentOS() unless @settings.current_os
     
 
     ##
