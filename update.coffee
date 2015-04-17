@@ -6,23 +6,45 @@ Zip      = require("adm-zip")
 Promise  = require("es6-promise").Promise
 rp       = require("request-promise")
 progress = require('progress-stream')
-glob     = require 'glob'
+glob     = require('glob')
+os       = require('os')
 
+## TODO
+# # ## Check if running in correct directory (aka. has app.nw in it)
+# Add automatic cleanup phase. Remove upziped temp dir. 
+# Make separate process.
+
+updater_nw   = require './updater_nodewebkit'
+updater_tint = require './updater_tint'
 
 class VerificationError extends Error
-    constructor: ->
-        @name = 'VerificationError'
+  constructor: ->
+    @name = 'VerificationError'
 
+class ImplementationError extends Error
+  constructor: (@message)->
+    @name = 'ImplementationError'
+
+
+##
+# Rosskick!
+# 
+# Rosskick is a general purpose updater. It sets up the framework and workflow
+# running as a separate process to allow for full updates.
+# 
 class Ross
 
+  ##
+  # @parm settings      package.json object of app to update.
   constructor : (@settings) ->
-    @TEMP_FOLDER = if @settings.current_os is 
-      'linux' then process.execPath else process.cwd();
-    @TEMP_FILENAME = "package.nw.new"
-    @outputFile = path.join(path.dirname(@TEMP_FOLDER), @TEMP_FILENAME)
-
-    @settings.current_os = @currentOS() unless @settings.current_os
     
+    @settings.current_os = @currentOS() unless @settings.current_os    
+    
+    @TEMP_FOLDER   = if @settings.current_os is'linux' then process.execPath else process.cwd();
+    @TEMP_FILENAME = "update.new"
+    @OUTPUT_FILE   = path.join(path.dirname(@TEMP_FOLDER), @TEMP_FILENAME)
+
+    throw new ImplementationError('No update details provided in package.json.') unless @settings.update
 
     ##
     # Functions to be called between each stage of update. They also decide if
@@ -32,28 +54,66 @@ class Ross
     #   [next] function if err is null, undefined otherwise. next(true) will
     #          continue the update process. next(false) will halt it.
     @_on = 
+        
+      # Ran once update information has been queried from server.
       "check" : (err, next, info) -> 
         console.log "Checked for updates"
         return console.error(err) if err
         next(true)
+      
+      # Ran once update package has been downloaded
       "download" : (err, next, info) ->
         console.log "Update downloaded"
         return console.error(err) if err
         next(true)
-      "download progress" : (progress) ->
-        console.log "#{progress.percentage}% @#{progress.speed}bps (#{progress.remaining} remaining)"
+
+      # Ran once update has been installed.
       "installed" : (err, info) ->
         return console.error(err) if err
         console.log "Update installed"
+      
+      # Called intermitently with download progress information.
+      "download progress" : (progress) ->
+        console.log "#{progress.percentage}% @#{progress.speed}bps (#{progress.remaining} remaining)"
+      
 
+    ## Default installers.
+    #
+    # Installer is a function with signature (pkg, appnw, resolve, reject)
+    # pkg: path to unpackaged zip.
+    # app: path to .app
+    # resolve/reject: Promise returns.
+    #
+    @installOSX = if @nwPackage(@settings) then updater_nw.installOSX else () -> 
+      throw new ImplementationError('OSX update installer not implemented')
+
+    @installWindows = if @nwPackage(@settings) then updater_nw.installWindows else () -> 
+      throw new ImplementationError('Windows update installer not implemented')
+
+    @installLinux = if @nwPackage(@settings) then updater_nw.installLinux else () -> 
+      throw new ImplementationError('Linux update installer not implemented')
+
+
+  ################################ Environment. ################################
+
+  ##
+  # Retruns true if package has the format of a nodewebkit app, false otherwise.
+  nwPackage : ->
+    return if @settings.window then true else false
+
+  ##
+  # Returns nodewebkit OS code for current platform.
   currentOS : ->
-    return switch [os.platform(), os.arch()]
-      when ['linux',  'x64'] then 'linux64'
-      when ['linux',  'x84'] then 'linux32'
-      when ['darwin', 'x64'] then 'osx64'
-      when ['darwin', 'x84'] then 'osx32'
-      when ['win64',  'x64'] then 'win64'
-      when ['win32',  'x84'] then 'win32'
+    return switch os.platform() + os.arch()
+      when 'linuxx64'  then 'linux64'
+      when 'linuxx84'  then 'linux32'
+      when 'darwinx64' then 'osx64' 
+      when 'darwinx84' then 'osx32'
+      when 'win64x64'  then 'win64'
+      when 'win32x84'  then 'win32'
+      else os.platform() + os.arch()
+
+  ################################## Setters. ##################################
 
   ##
   # Sets event functions.
@@ -65,17 +125,17 @@ class Ross
   ############################### Update Process ###############################
 
   ##
-  # Updates the mcjigg.
+  # THE REAL DEAL: Updates the mcjigg.
   update : ->
     self = this
-
+    
     update_info  = null
     package_info = null
 
-
-    # Check for updates
+    # 1. Check for updates
     return @check()
     .then (info) ->
+      console.log '1'
       update_info = info
       
       throw new Error("Empty update manifest file.") unless update_info
@@ -89,7 +149,7 @@ class Ross
     .catch((err) -> self._on["check"](err, null, update_info))
 
 
-    # Download updates
+    # 2. Download updates
     .then (go) ->
       return false unless go
       return self.download(package_info)
@@ -100,17 +160,19 @@ class Ross
     .catch((err) -> self._on['download'](err, null, update_info))
 
 
-    # Install the updates
+    # 3. Install the updates
     .then (go) ->
       return false unless go
       return self.install()
     
-    .catch((err) -> self._on['install'](err, null, update_info))
+    .catch((err) -> self._on['installed'](err, null, update_info))
 
-    # Done! 
-    .then (good) -> 
-      self._on['install'](null, update_info) if good
+    # 4. Done! ^.^
+    .then () -> 
+      self._on['installed'](null, update_info)
 
+
+  ## THE STAGES ##
 
   ##
   # Returns: Promise to null if no update available for current OS, or the 
@@ -123,13 +185,12 @@ class Ross
       versions = Object.keys(updates).sort()
       
       # Could/should be externalized to allow for channels? Maybe with a
-      # should_update delegate function that returns a boolean?
+      # should_update delegate function that returns a boolean? # ## USE SEMVER
       latest = versions[versions.length - 1]
       if latest > self.settings.version
         return updates[latest]
 
       return null
-      # //
 
   ##
   # Downloads update for selected OS.
@@ -166,9 +227,7 @@ class Ross
         return
       )
 
-      .pipe fs.createWriteStream(self.outputFile)
-
-
+      .pipe fs.createWriteStream(self.OUTPUT_FILE)
 
   ##
   # Returns: Empty promise if verification was successful. 
@@ -180,7 +239,7 @@ class Ross
       hash   = crypto.createHash("SHA1")
       verify = crypto.createVerify("RSA-SHA256")
 
-      read_stream = fs.createReadStream(self.outputFile)
+      read_stream = fs.createReadStream(self.OUTPUT_FILE)
       read_stream.pipe hash
       read_stream.pipe verify
       read_stream.on "end", ->
@@ -195,143 +254,48 @@ class Ross
           console.error e
 
   ##
+  # Unzips downloaded package.
+  # Returns: Directory of extracted zip.
+  unzip : () ->
+    
+    # Extract
+    pack = new Zip(@OUTPUT_FILE)
+    dest = path.join(path.dirname(@OUTPUT_FILE), 'update')
+    pack.extractAllTo dest, true
+
+    # Cleanup download
+    fs.unlinkSync @OUTPUT_FILE
+    
+    return dest
+
+  ##
   # Installs donwloaded update
   # Returns: Empty promise if instalation was successful.
   install : () ->
     self = this
     os = @settings.current_os
-    # ## Check if path exists.
+
+    pkg = @unzip()
+    app = process.cwd()
+
     
     switch os
       
       when "win32", "win64"
-        return new Promise((res, rej) -> installWin.call(self, res, rej)) 
+        return new Promise((res, rej) -> 
+          self.installWin.call(self, pkg, app, res, rej))
       
       when "linux32", "linux64"
-        return new Promise((res, rej) -> installLinux.call(self, res, rej))
+        return new Promise((res, rej) -> 
+          self.installLinux.call(self, pkg, app, res, rej))
       
       when "osx32", "osx64"
-        return new Promise((res, rej) -> installOSX.call(self, res, rej))
+        return new Promise((res, rej) -> 
+          self.installOSX.call(self, pkg, app, res, rej))
       
       else
         throw new Error("OS not supported. This should be impossible.")
 
-  ##
-  # Installs downloaded update on OSX
-  # 
-  # ## Unpack zip automatically.
-  installOSX = (resolve, reject) ->
-    self = this
-    # process.cwd() -> 
-    installDir = process.cwd() # .app/Contents/Resources/app.nw
-    tempDir = path.join(process.cwd(), "../../Update") # .app/Contents/update
-
-    dlapp = glob.sync(tempDir + "/*.app")[0]
-    
-    zip = self.outputFile 
-    src = path.join(dlapp, 'Contents/Resources')
-    dst = path.join(installDir, '../') #.app/Contents/Resources
-
-    console.log src, '->', dst
-
-    try
-
-      # Extract
-      pack = new Zip(self.outputFile)
-      pack.extractAllTo tempDir, true
-
-      # Cleanup download
-      fs.unlinkSync zip
-
-      # Remove current 
-      fs.removeSync dst
-
-      # Move 
-      fs.rename(src, dst, (err) ->
-        if err
-          console.log "Fatal error: Update didn't finish correctly. Redownload app T.T"
-          reject err
-        else
-          resolve true
-      )
-
-    catch e
-      reject e
-
-  ########################### Unsupported/Unfinished ###########################
-
-  ##
-  # Installs downloaded update on Windows
-  installWindows = (updateData) ->
-    self = this
-    outputDir = path.dirname(@outputFile)
-    installDir = path.join(outputDir, "app")
-    pack = new zip(@outputFile)
-    
-    return new Promise (resolve, reject) -> 
-      
-      # Extract update to install directory
-      pack.extractAllTo installDir, true
-        
-      # Cleanup
-      fs.unlink downloadPath, (err) ->
-        if err
-          defer.reject err
-        else
-          defer.resolve()
-        return
-  
-      return
-
-  # WIP
-  installLinux = (updateData) ->
-    outputDir = path.dirname(@outputFile)
-    packageFile = path.join(outputDir, "package.nw")
-    
-    fs.rename packageFile, path.join(outputDir, "package.nw.old"), (err) ->
-      if err
-        reject err
-        return
-      
-      # -> working 000
-      fs.rename downloadPath, packageFile, (err) ->
-        if err
-          
-          # Sheeet! We got a booboo :(
-          # Quick! Lets erase it before anyone realizes!
-          if fs.existsSync(downloadPath)
-            fs.unlink downloadPath, (err) ->
-              if err
-                defer.reject err
-              else
-                fs.rename path.join(outputDir, "package.nw.old"), packageFile, (err) ->
-                  
-                  # err is either an error or undefined, so its fine not to check!
-                  defer.reject err
-                  return
-
-              return
-
-          else
-            defer.reject err
-        
-        else
-          fs.unlink path.join(outputDir, "package.nw.old"), (err) ->
-            if err
-              
-              # This is a non-fatal error, should we reject?
-              defer.reject err
-            else
-              defer.resolve()
-            return
-
-        return
-
-      return
-
-    defer.promise
-
-# ## Check if running in correct directory (aka. has app.nw in it)
 
 module.exports = Ross
 
