@@ -14,9 +14,6 @@ os       = require('os')
 # Add automatic cleanup phase. Remove upziped temp dir. 
 # Make separate process.
 
-updater_nw   = require './updater_nodewebkit'
-updater_tint = require './updater_tint'
-
 class VerificationError extends Error
   constructor: ->
     @name = 'VerificationError'
